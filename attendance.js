@@ -30,99 +30,71 @@ function setupTheme() {
 function setupThresholdListener() {
   const input = document.getElementById('threshold-input');
   if (input) {
-    input.addEventListener('input', () => {
-      loadCalendar(); // Recalculate on input
+    input.addEventListener('change', () => {
+      loadCalendar(); // only when user is done editing
     });
   }
 }
 
-function loadCalendar() {
+
+async function loadCalendar() {
   const uid = auth.currentUser.uid;
   const attendanceSection = document.getElementById('attendance-section');
   attendanceSection.innerHTML = '';
 
-  db.collection('calendar')
-    .orderBy('date')
-    .get()
-    .then(snapshot => {
-      const classes = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          date: data.date,
-          subject: data.subject
-        };
-      });
+  const calendarSnapshot = await db.collection('calendar').orderBy('date').get();
 
-      classes.sort((a, b) => new Date(a.date) - new Date(b.date));
+  const classes = calendarSnapshot.docs.map(doc => ({
+    id: doc.id,
+    date: doc.data().date,
+    subject: doc.data().subject
+  }));
 
-      classes.forEach(c => {
-        const row = document.createElement('div');
-        row.style.display = 'flex';
-        row.style.justifyContent = 'space-between';
-        row.style.alignItems = 'center';
-        row.style.marginBottom = '8px';
+  // Sort
+  classes.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-        const btn = document.createElement('button');
-        btn.innerText = "Mark Present";
-        btn.setAttribute('data-id', c.id);
-        btn.onclick = () => markAttendance(c.id);
+  // For summary count
+  let attendedCount = 0;
 
-        db.collection('attendance')
-          .doc(`${uid}_${c.id}`)
-          .get()
-          .then(doc => {
-            if (doc.exists) {
-              btn.innerText = "✅ Marked";
-              btn.disabled = true;
-              btn.classList.add("marked");
+  const rowsHTML = await Promise.all(classes.map(async c => {
+    const attendanceDoc = await db.collection('attendance').doc(`${uid}_${c.id}`).get();
+    const isMarked = attendanceDoc.exists;
+    if (isMarked) attendedCount++;
 
-              const undoBtn = document.createElement('button');
-              undoBtn.innerText = "Undo";
-              undoBtn.style.marginLeft = '10px';
-              undoBtn.onclick = () => undoAttendance(c.id);
-              row.appendChild(undoBtn);
-            }
-          });
+    const markButton = isMarked
+      ? `<button class="marked" disabled>✅ Marked</button>
+         <button onclick="undoAttendance('${c.id}')" style="margin-left: 10px;">Undo</button>`
+      : `<button onclick="markAttendance('${c.id}')">Mark Present</button>`;
 
-        row.innerHTML = `<span><strong>${formatDate(c.date)}</strong> - ${c.subject}</span>`;
-        row.appendChild(btn);
-        attendanceSection.appendChild(row);
-      });
+    return `
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+        <span><strong>${formatDate(c.date)}</strong> - ${c.subject}</span>
+        ${markButton}
+      </div>
+    `;
+  }));
 
-      // ✅ Summary calculation
-      Promise.all(classes.map(c => {
-        return db.collection('attendance')
-          .doc(`${uid}_${c.id}`)
-          .get()
-          .then(doc => doc.exists ? 1 : 0);
-      })).then(attendedArray => {
-        const total = classes.length;
-        const attended = attendedArray.reduce((a, b) => a + b, 0);
-        const percent = total === 0 ? 0 : Math.round((attended / total) * 100);
+  attendanceSection.innerHTML = rowsHTML.join('');
 
-        // 🧠 Threshold logic
-        const thresholdInput = document.getElementById('threshold-input');
-        let threshold = parseFloat(thresholdInput?.value || "75");
-        if (isNaN(threshold)) threshold = 75;
+  // Summary
+  const total = classes.length;
+  const thresholdInput = document.getElementById('threshold-input');
+  let threshold = parseFloat(thresholdInput?.value || "75");
+  if (isNaN(threshold)) threshold = 75;
+  localStorage.setItem('attendance-threshold', threshold);
 
-        localStorage.setItem('attendance-threshold', threshold);
-        const needed = Math.max(0, Math.ceil((threshold / 100) * total - attended));
+  const percent = total === 0 ? 0 : Math.round((attendedCount / total) * 100);
+  const needed = Math.max(0, Math.ceil((threshold / 100) * total - attendedCount));
 
-        // ✨ Update UI
-        document.getElementById('total-classes').innerText = total;
-        document.getElementById('attended-classes').innerText = attended;
-        document.getElementById('attendance-percent').innerText = `${percent}%`;
-        document.getElementById('classes-needed').innerText = needed;
+  document.getElementById('total-classes').innerText = total;
+  document.getElementById('attended-classes').innerText = attendedCount;
+  document.getElementById('attendance-percent').innerText = `${percent}%`;
+  document.getElementById('classes-needed').innerText = needed;
 
-        // Load saved threshold
-        const savedThreshold = localStorage.getItem('attendance-threshold');
-        if (savedThreshold && thresholdInput) {
-          thresholdInput.value = savedThreshold;
-        }
-      });
-    });
+  // Set input to saved value
+  if (thresholdInput) thresholdInput.value = threshold;
 }
+
 
 function formatDate(rawDate) {
   const parsed = new Date(rawDate);
