@@ -82,3 +82,26 @@ input:checked + .slider {
 input:checked + .slider:before {
   transform: translateX(26px);
 }
+/* 🌙 DARK MODE OVERRIDES */
+body.dark-mode .container {
+  background: #1e1e1e;
+  color: #f1f1f1;
+}
+
+body.dark-mode button {
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+}
+
+body.dark-mode #summary-box {
+  background: #2c2c2c;
+  border: 1px solid #444;
+}
+
+body.dark-mode span,
+body.dark-mode p,
+body.dark-mode h4,
+body.dark-mode h2 {
+  color: #f1f1f1;
+}
