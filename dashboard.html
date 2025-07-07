@@ -16,10 +16,16 @@
   <script src="attendance.js" defer></script>
 </head>
 <body>
+  <!-- 💡 Add dark/light mode toggle -->
+  <label class="switch">
+    <input type="checkbox" id="theme-toggle">
+    <span class="slider round"></span>
+  </label>
+
   <div class="container">
     <h2>Welcome to Dashboard</h2>
 
-    <!-- 📊 Summary Box (keep inside container, before attendance list) -->
+    <!-- 📊 Summary Box -->
     <div id="summary-box" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px;">
       <h4>📊 Attendance Summary</h4>
       <p>Total Classes: <span id="total-classes">0</span></p>
@@ -28,7 +34,7 @@
       <p>Need <span id="classes-needed">0</span> more classes to reach 75%</p>
     </div>
 
-    <!-- 🗓️ Class Cards Section -->
+    <!-- 🗓️ Class Cards -->
     <div id="attendance-section"></div>
 
     <!-- 🚪 Logout -->
