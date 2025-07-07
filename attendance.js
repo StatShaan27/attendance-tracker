@@ -11,90 +11,126 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function setupTheme() {
-  const toggle = document.getElementById('theme-toggle');
-  const savedTheme = localStorage.getItem('theme') || 'light';
-
+  const savedTheme = localStorage.getItem('theme') || 'dark';
   document.body.classList.add(`${savedTheme}-mode`);
-  if (toggle) toggle.checked = savedTheme === 'dark';
-
-  if (toggle) {
-    toggle.addEventListener('change', () => {
-      const selectedTheme = toggle.checked ? 'dark' : 'light';
-      document.body.className = '';
-      document.body.classList.add(`${selectedTheme}-mode`);
-      localStorage.setItem('theme', selectedTheme);
-    });
-  }
 }
 
 function setupThresholdListener() {
   const input = document.getElementById('threshold-input');
   if (input) {
-    input.addEventListener('change', () => {
-      loadCalendar(); // only when user is done editing
+    input.addEventListener('input', () => {
+      loadCalendar();
     });
   }
 }
 
-
-async function loadCalendar() {
+function loadCalendar() {
   const uid = auth.currentUser.uid;
   const attendanceSection = document.getElementById('attendance-section');
   attendanceSection.innerHTML = '';
 
-  const calendarSnapshot = await db.collection('calendar').orderBy('date').get();
+  db.collection('calendar')
+    .orderBy('date')
+    .get()
+    .then(snapshot => {
+      const classes = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          date: data.date,
+          subject: data.subject
+        };
+      });
 
-  const classes = calendarSnapshot.docs.map(doc => ({
-    id: doc.id,
-    date: doc.data().date,
-    subject: doc.data().subject
-  }));
+      // Group by month-year
+      const grouped = {};
+      classes.forEach(c => {
+        const d = new Date(c.date);
+        const key = `${d.toLocaleString('default', { month: 'long' })} ${d.getFullYear()}`;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push(c);
+      });
 
-  // Sort
-  classes.sort((a, b) => new Date(a.date) - new Date(b.date));
+      const groupKeys = Object.keys(grouped).sort((a, b) => {
+        const [ma, ya] = a.split(' ');
+        const [mb, yb] = b.split(' ');
+        return new Date(`${ma} 1, ${ya}`) - new Date(`${mb} 1, ${yb}`);
+      });
 
-  // For summary count
-  let attendedCount = 0;
+      groupKeys.forEach(key => {
+        const details = document.createElement('details');
+        details.open = true;
+        const summary = document.createElement('summary');
+        summary.innerText = key;
+        details.appendChild(summary);
 
-  const rowsHTML = await Promise.all(classes.map(async c => {
-    const attendanceDoc = await db.collection('attendance').doc(`${uid}_${c.id}`).get();
-    const isMarked = attendanceDoc.exists;
-    if (isMarked) attendedCount++;
+        grouped[key].forEach(c => {
+          const row = document.createElement('div');
+          row.style.display = 'flex';
+          row.style.justifyContent = 'space-between';
+          row.style.alignItems = 'center';
+          row.style.marginBottom = '8px';
 
-    const markButton = isMarked
-      ? `<button class="marked" disabled>✅ Marked</button>
-         <button onclick="undoAttendance('${c.id}')" style="margin-left: 10px;">Undo</button>`
-      : `<button onclick="markAttendance('${c.id}')">Mark Present</button>`;
+          const span = document.createElement('span');
+          span.innerHTML = `<strong>${formatDate(c.date)}</strong> - ${c.subject}`;
+          row.appendChild(span);
 
-    return `
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-        <span><strong>${formatDate(c.date)}</strong> - ${c.subject}</span>
-        ${markButton}
-      </div>
-    `;
-  }));
+          const btn = document.createElement('button');
+          btn.innerText = "Mark Present";
+          btn.setAttribute('data-id', c.id);
+          btn.onclick = () => markAttendance(c.id);
 
-  attendanceSection.innerHTML = rowsHTML.join('');
+          db.collection('attendance')
+            .doc(`${uid}_${c.id}`)
+            .get()
+            .then(doc => {
+              if (doc.exists) {
+                btn.innerText = "Marked";
+                btn.disabled = true;
+                btn.classList.add("marked");
 
-  // Summary
-  const total = classes.length;
-  const thresholdInput = document.getElementById('threshold-input');
-  let threshold = parseFloat(thresholdInput?.value || "75");
-  if (isNaN(threshold)) threshold = 75;
-  localStorage.setItem('attendance-threshold', threshold);
+                const undoBtn = document.createElement('button');
+                undoBtn.innerText = "Undo";
+                undoBtn.style.marginLeft = '10px';
+                undoBtn.onclick = () => undoAttendance(c.id);
+                row.appendChild(undoBtn);
+              }
+            });
 
-  const percent = total === 0 ? 0 : Math.round((attendedCount / total) * 100);
-  const needed = Math.max(0, Math.ceil((threshold / 100) * total - attendedCount));
+          row.appendChild(btn);
+          details.appendChild(row);
+        });
 
-  document.getElementById('total-classes').innerText = total;
-  document.getElementById('attended-classes').innerText = attendedCount;
-  document.getElementById('attendance-percent').innerText = `${percent}%`;
-  document.getElementById('classes-needed').innerText = needed;
+        attendanceSection.appendChild(details);
+      });
 
-  // Set input to saved value
-  if (thresholdInput) thresholdInput.value = threshold;
+      // 📊 Summary
+      Promise.all(classes.map(c => {
+        return db.collection('attendance')
+          .doc(`${uid}_${c.id}`)
+          .get()
+          .then(doc => doc.exists ? 1 : 0);
+      })).then(attendedArray => {
+        const total = classes.length;
+        const attended = attendedArray.reduce((a, b) => a + b, 0);
+        const thresholdInput = document.getElementById('threshold-input');
+        let threshold = parseFloat(thresholdInput?.value || "75");
+        if (isNaN(threshold)) threshold = 75;
+        localStorage.setItem('attendance-threshold', threshold);
+        const needed = Math.max(0, Math.ceil((threshold / 100) * total - attended));
+
+        document.getElementById('total-classes').innerText = total;
+        document.getElementById('attended-classes').innerText = attended;
+        document.getElementById('attendance-percent').innerText = `${Math.round(attended / total * 100)}%`;
+        document.getElementById('classes-needed').innerText = needed;
+
+        const savedThreshold = localStorage.getItem('attendance-threshold');
+        if (savedThreshold && thresholdInput) {
+          thresholdInput.value = savedThreshold;
+        }
+      });
+    });
 }
-
 
 function formatDate(rawDate) {
   const parsed = new Date(rawDate);
@@ -106,18 +142,22 @@ function formatDate(rawDate) {
 
 function markAttendance(classId) {
   const uid = auth.currentUser.uid;
-  const docRef = db.collection('attendance').doc(`${uid}_${classId}`);
-
-  docRef.set({ marked: true }).then(() => {
+  db.collection('attendance').doc(`${uid}_${classId}`).set({ marked: true }).then(() => {
     loadCalendar();
   });
 }
 
 function undoAttendance(classId) {
   const uid = auth.currentUser.uid;
-  const docRef = db.collection('attendance').doc(`${uid}_${classId}`);
-
-  docRef.delete().then(() => {
+  db.collection('attendance').doc(`${uid}_${classId}`).delete().then(() => {
     loadCalendar();
+  });
+}
+
+function logout() {
+  auth.signOut().then(() => {
+    window.location.href = "index.html";
+  }).catch((error) => {
+    console.error("Logout error:", error);
   });
 }
