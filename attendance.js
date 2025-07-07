@@ -4,6 +4,7 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.href = 'index.html';
     } else {
       loadCalendar();
+      setupTheme(); // Dark/light mode toggle setup
     }
   });
 });
@@ -37,14 +38,36 @@ function loadCalendar() {
         row.style.alignItems = 'center';
         row.style.marginBottom = '8px';
 
-        row.innerHTML = `
-          <span><strong>${formatDate(c.date)}</strong> - ${c.subject}</span>
-          <button onclick="markAttendance('${c.id}')">Mark Present</button>
-        `;
+        const btn = document.createElement('button');
+        btn.innerText = "Mark Present";
+        btn.setAttribute('data-id', c.id);
+        btn.onclick = () => markAttendance(c.id);
+
+        // Check if already marked
+        db.collection('attendance')
+          .doc(`${uid}_${c.id}`)
+          .get()
+          .then(doc => {
+            if (doc.exists) {
+              btn.innerText = "✅ Marked";
+              btn.disabled = true;
+              btn.classList.add("marked");
+
+              // Add undo
+              const undoBtn = document.createElement('button');
+              undoBtn.innerText = "Undo";
+              undoBtn.style.marginLeft = '10px';
+              undoBtn.onclick = () => undoAttendance(c.id);
+              row.appendChild(undoBtn);
+            }
+          });
+
+        row.innerHTML = `<span><strong>${formatDate(c.date)}</strong> - ${c.subject}</span>`;
+        row.appendChild(btn);
         attendanceSection.appendChild(row);
       });
 
-      // 📊 Render summary stats AFTER class rows
+      // 📊 Summary stats
       Promise.all(classes.map(c => {
         return db.collection('attendance')
           .doc(`${uid}_${c.id}`)
@@ -64,23 +87,28 @@ function loadCalendar() {
     });
 }
 
-
 function formatDate(rawDate) {
-  // Try to auto-fix common date inputs like "21st Aug" or "Aug 21st"
   const parsed = new Date(rawDate);
   if (!isNaN(parsed)) {
-    return parsed.toDateString().slice(4); // e.g., "Aug 21 2025"
+    return parsed.toDateString().slice(4);
   }
-  return rawDate; // fallback
+  return rawDate;
 }
 
-
-function markAttendance(dateId) {
+function markAttendance(classId) {
   const uid = auth.currentUser.uid;
-  db.collection('attendance').add({
-    userId: uid,
-    classId: dateId,
-    timestamp: new Date()
+  const docRef = db.collection('attendance').doc(`${uid}_${classId}`);
+
+  docRef.set({ marked: true }).then(() => {
+    loadCalendar();
   });
-  alert('Attendance marked!');
+}
+
+function undoAttendance(classId) {
+  const uid = auth.currentUser.uid;
+  const docRef = db.collection('attendance').doc(`${uid}_${classId}`);
+
+  docRef.delete().then(() => {
+    loadCalendar();
+  });
 }
