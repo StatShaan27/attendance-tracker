@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     } else {
       loadCalendar();
       setupTheme();
-setupThresholdListener(); // 👈 Add this
+      setupThresholdListener();
     }
   });
 });
@@ -23,15 +23,15 @@ function setupTheme() {
       document.body.className = '';
       document.body.classList.add(`${selectedTheme}-mode`);
       localStorage.setItem('theme', selectedTheme);
-      function setupThresholdListener() {
-  const input = document.getElementById('threshold-input');
-  if (input) {
-    input.addEventListener('input', () => {
-      loadCalendar(); // Refresh calculation
     });
   }
 }
 
+function setupThresholdListener() {
+  const input = document.getElementById('threshold-input');
+  if (input) {
+    input.addEventListener('input', () => {
+      loadCalendar(); // Recalculate on input
     });
   }
 }
@@ -54,10 +54,8 @@ function loadCalendar() {
         };
       });
 
-      // Sort by date
       classes.sort((a, b) => new Date(a.date) - new Date(b.date));
 
-      // Render class rows
       classes.forEach(c => {
         const row = document.createElement('div');
         row.style.display = 'flex';
@@ -70,7 +68,6 @@ function loadCalendar() {
         btn.setAttribute('data-id', c.id);
         btn.onclick = () => markAttendance(c.id);
 
-        // Check if already marked
         db.collection('attendance')
           .doc(`${uid}_${c.id}`)
           .get()
@@ -80,7 +77,6 @@ function loadCalendar() {
               btn.disabled = true;
               btn.classList.add("marked");
 
-              // Add undo
               const undoBtn = document.createElement('button');
               undoBtn.innerText = "Undo";
               undoBtn.style.marginLeft = '10px';
@@ -94,41 +90,39 @@ function loadCalendar() {
         attendanceSection.appendChild(row);
       });
 
-      // 📊 Summary stats
-      // 📊 Summary stats
-Promise.all(classes.map(c => {
-  return db.collection('attendance')
-    .doc(`${uid}_${c.id}`)
-    .get()
-    .then(doc => doc.exists ? 1 : 0);
-})).then(attendedArray => {
-  const total = classes.length;
-  const attended = attendedArray.reduce((a, b) => a + b, 0);
-  const percent = total === 0 ? 0 : Math.round((attended / total) * 100);
+      // ✅ Summary calculation
+      Promise.all(classes.map(c => {
+        return db.collection('attendance')
+          .doc(`${uid}_${c.id}`)
+          .get()
+          .then(doc => doc.exists ? 1 : 0);
+      })).then(attendedArray => {
+        const total = classes.length;
+        const attended = attendedArray.reduce((a, b) => a + b, 0);
+        const percent = total === 0 ? 0 : Math.round((attended / total) * 100);
 
-  // 🧠 Get threshold from input (or fallback to 75)
-  const thresholdInput = document.getElementById('threshold-input');
-  let threshold = parseFloat(thresholdInput?.value || "75");
-  if (isNaN(threshold)) threshold = 75;
+        // 🧠 Threshold logic
+        const thresholdInput = document.getElementById('threshold-input');
+        let threshold = parseFloat(thresholdInput?.value || "75");
+        if (isNaN(threshold)) threshold = 75;
 
-  // ✅ Save threshold to localStorage
-  localStorage.setItem('attendance-threshold', threshold);
+        localStorage.setItem('attendance-threshold', threshold);
+        const needed = Math.max(0, Math.ceil((threshold / 100) * total - attended));
 
-  // 📈 Calculate needed
-  const needed = Math.max(0, Math.ceil((threshold / 100) * total - attended));
+        // ✨ Update UI
+        document.getElementById('total-classes').innerText = total;
+        document.getElementById('attended-classes').innerText = attended;
+        document.getElementById('attendance-percent').innerText = `${percent}%`;
+        document.getElementById('classes-needed').innerText = needed;
 
-  // 📝 Update UI
- document.getElementById('total-classes').innerText = total;
-document.getElementById('attended-classes').innerText = attended;
-document.getElementById('attendance-percent').innerText = `${percent}%`;
-document.getElementById('classes-needed').innerText = needed;
-
-// ⏪ Load saved threshold if any
-const savedThreshold = localStorage.getItem('attendance-threshold');
-const thresholdInput = document.getElementById('threshold-input');
-if (savedThreshold && thresholdInput) {
-  thresholdInput.value = savedThreshold;
-});
+        // Load saved threshold
+        const savedThreshold = localStorage.getItem('attendance-threshold');
+        if (savedThreshold && thresholdInput) {
+          thresholdInput.value = savedThreshold;
+        }
+      });
+    });
+}
 
 function formatDate(rawDate) {
   const parsed = new Date(rawDate);
