@@ -22,6 +22,15 @@ function setupTheme() {
       document.body.className = '';
       document.body.classList.add(`${selectedTheme}-mode`);
       localStorage.setItem('theme', selectedTheme);
+      function setupThresholdListener() {
+  const input = document.getElementById('threshold-input');
+  if (input) {
+    input.addEventListener('input', () => {
+      loadCalendar(); // Refresh calculation
+    });
+  }
+}
+
     });
   }
 }
