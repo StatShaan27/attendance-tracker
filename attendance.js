@@ -108,10 +108,16 @@ Promise.all(classes.map(c => {
   const needed = Math.max(0, Math.ceil((threshold / 100) * total - attended));
 
   // 📝 Update UI
-  document.getElementById('total-classes').innerText = total;
-  document.getElementById('attended-classes').innerText = attended;
-  document.getElementById('attendance-percent').innerText = `${percent}%`;
-  document.getElementById('classes-needed').innerText = needed;
+ document.getElementById('total-classes').innerText = total;
+document.getElementById('attended-classes').innerText = attended;
+document.getElementById('attendance-percent').innerText = `${percent}%`;
+document.getElementById('classes-needed').innerText = needed;
+
+// ⏪ Load saved threshold if any
+const savedThreshold = localStorage.getItem('attendance-threshold');
+const thresholdInput = document.getElementById('threshold-input');
+if (savedThreshold && thresholdInput) {
+  thresholdInput.value = savedThreshold;
 });
 
 function formatDate(rawDate) {
