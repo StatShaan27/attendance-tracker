@@ -85,25 +85,34 @@ function loadCalendar() {
       });
 
       // 📊 Summary stats
-      Promise.all(classes.map(c => {
-        return db.collection('attendance')
-          .doc(`${uid}_${c.id}`)
-          .get()
-          .then(doc => doc.exists ? 1 : 0);
-      })).then(attendedArray => {
-       const total = classes.length;
-const attended = attendedArray.reduce((a, b) => a + b, 0);
-const percent = total === 0 ? 0 : Math.round((attended / total) * 100);
-const needed = Math.max(0, Math.ceil(0.75 * total - attended));  // ✅ Your formula
+      // 📊 Summary stats
+Promise.all(classes.map(c => {
+  return db.collection('attendance')
+    .doc(`${uid}_${c.id}`)
+    .get()
+    .then(doc => doc.exists ? 1 : 0);
+})).then(attendedArray => {
+  const total = classes.length;
+  const attended = attendedArray.reduce((a, b) => a + b, 0);
+  const percent = total === 0 ? 0 : Math.round((attended / total) * 100);
 
-document.getElementById('total-classes').innerText = total;
-document.getElementById('attended-classes').innerText = attended;
-document.getElementById('attendance-percent').innerText = `${percent}%`;
-document.getElementById('classes-needed').innerText = needed;
+  // 🧠 Get threshold from input (or fallback to 75)
+  const thresholdInput = document.getElementById('threshold-input');
+  let threshold = parseFloat(thresholdInput?.value || "75");
+  if (isNaN(threshold)) threshold = 75;
 
-      });
-    });
-}
+  // ✅ Save threshold to localStorage
+  localStorage.setItem('attendance-threshold', threshold);
+
+  // 📈 Calculate needed
+  const needed = Math.max(0, Math.ceil((threshold / 100) * total - attended));
+
+  // 📝 Update UI
+  document.getElementById('total-classes').innerText = total;
+  document.getElementById('attended-classes').innerText = attended;
+  document.getElementById('attendance-percent').innerText = `${percent}%`;
+  document.getElementById('classes-needed').innerText = needed;
+});
 
 function formatDate(rawDate) {
   const parsed = new Date(rawDate);
