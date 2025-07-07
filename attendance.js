@@ -4,7 +4,8 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.href = 'index.html';
     } else {
       loadCalendar();
-      setupTheme(); // 🌗 Setup dark/light mode
+      setupTheme();
+setupThresholdListener(); // 👈 Add this
     }
   });
 });
