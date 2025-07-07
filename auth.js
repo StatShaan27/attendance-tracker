@@ -15,10 +15,12 @@ function login() {
     });
 }
 
+// auth.js
 function logout() {
   auth.signOut().then(() => {
-    window.location.href = "index.html"; // ✅ Redirect to login page
+    window.location.href = "index.html"; // or your login page
   }).catch((error) => {
     console.error("Logout error:", error);
   });
 }
+
