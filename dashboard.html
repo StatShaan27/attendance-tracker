@@ -5,17 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard</title>
   <link rel="stylesheet" href="style.css">
-  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
 
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js"></script>
+
+  <!-- Your scripts -->
   <script src="firebase.js" defer></script>
   <script src="attendance.js" defer></script>
 </head>
 <body>
   <div class="container">
     <h2>Welcome to Dashboard</h2>
+
+    <!-- 📊 Summary Box (keep inside container, before attendance list) -->
+    <div id="summary-box" style="margin-bottom: 20px; padding: 15px; border: 1px solid #ccc; border-radius: 8px;">
+      <h4>📊 Attendance Summary</h4>
+      <p>Total Classes: <span id="total-classes">0</span></p>
+      <p>Attended: <span id="attended-classes">0</span></p>
+      <p>Percentage: <span id="attendance-percent">0%</span></p>
+      <p>Need <span id="classes-needed">0</span> more classes to reach 75%</p>
+    </div>
+
+    <!-- 🗓️ Class Cards Section -->
     <div id="attendance-section"></div>
+
+    <!-- 🚪 Logout -->
     <button onclick="logout()">Logout</button>
   </div>
 </body>
