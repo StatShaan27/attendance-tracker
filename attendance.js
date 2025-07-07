@@ -91,15 +91,16 @@ function loadCalendar() {
           .get()
           .then(doc => doc.exists ? 1 : 0);
       })).then(attendedArray => {
-        const total = classes.length;
-        const attended = attendedArray.reduce((a, b) => a + b, 0);
-        const percent = total === 0 ? 0 : Math.round((attended / total) * 100);
-        const needed = Math.max(0, Math.ceil((0.75 * total - attended) / 0.25));
+       const total = classes.length;
+const attended = attendedArray.reduce((a, b) => a + b, 0);
+const percent = total === 0 ? 0 : Math.round((attended / total) * 100);
+const needed = Math.max(0, Math.ceil(0.75 * total - attended));  // ✅ Your formula
 
-        document.getElementById('total-classes').innerText = total;
-        document.getElementById('attended-classes').innerText = attended;
-        document.getElementById('attendance-percent').innerText = `${percent}%`;
-        document.getElementById('classes-needed').innerText = needed;
+document.getElementById('total-classes').innerText = total;
+document.getElementById('attended-classes').innerText = attended;
+document.getElementById('attendance-percent').innerText = `${percent}%`;
+document.getElementById('classes-needed').innerText = needed;
+
       });
     });
 }
