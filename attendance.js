@@ -4,10 +4,27 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location.href = 'index.html';
     } else {
       loadCalendar();
-      setupTheme(); // Dark/light mode toggle setup
+      setupTheme(); // 🌗 Setup dark/light mode
     }
   });
 });
+
+function setupTheme() {
+  const toggle = document.getElementById('theme-toggle');
+  const savedTheme = localStorage.getItem('theme') || 'light';
+
+  document.body.classList.add(`${savedTheme}-mode`);
+  if (toggle) toggle.checked = savedTheme === 'dark';
+
+  if (toggle) {
+    toggle.addEventListener('change', () => {
+      const selectedTheme = toggle.checked ? 'dark' : 'light';
+      document.body.className = '';
+      document.body.classList.add(`${selectedTheme}-mode`);
+      localStorage.setItem('theme', selectedTheme);
+    });
+  }
+}
 
 function loadCalendar() {
   const uid = auth.currentUser.uid;
