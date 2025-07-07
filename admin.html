@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Panel</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js"></script>
+  <script src="firebase.js" defer></script>
+  <script src="calendar.js" defer></script>
+</head>
+<body>
+  <div class="container">
+    <h2>Admin Calendar Editor</h2>
+    <input type="date" id="classDate">
+    <input type="text" id="subject" placeholder="Subject">
+    <button onclick="addClassDate()">Add Class</button>
+    <div id="calendarList"></div>
+    <button onclick="logout()">Logout</button>
+  </div>
+</body>
+</html>
